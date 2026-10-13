@@ -1,1 +1,149 @@
-
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0b1511">
+<title>Wildline: First Contact</title>
+<style>
+:root{--lime:#c8ff72;--panel:rgba(7,16,14,.78);--line:rgba(200,255,114,.32)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#07110e;color:#f4f7ee;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none}
+canvas{display:block;position:fixed;inset:0}
+#hud{position:fixed;inset:0;pointer-events:none}
+.top{display:flex;justify-content:space-between;gap:10px;padding:calc(env(safe-area-inset-top) + 12px) 14px 0}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 11px;backdrop-filter:blur(8px);font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.pill b{color:var(--lime);font-size:14px}
+#mission{position:absolute;left:14px;top:82px;max-width:72%;background:var(--panel);border-left:3px solid var(--lime);padding:10px 12px;border-radius:0 10px 10px 0;font-size:12px;line-height:1.4}
+#mission strong{display:block;color:var(--lime);font-size:10px;letter-spacing:.15em;margin-bottom:3px}
+#crosshair{position:absolute;left:50%;top:50%;width:20px;height:20px;transform:translate(-50%,-50%);opacity:.9}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#eaffcf;box-shadow:0 0 5px #a9ff54}
+#crosshair:before{width:2px;height:20px;left:9px;top:0}#crosshair:after{height:2px;width:20px;top:9px;left:0}
+#bottom{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 16px);left:0;right:0;display:flex;align-items:end;justify-content:space-between;padding:0 18px;gap:14px}
+#stick{pointer-events:auto;width:112px;height:112px;border:1px solid #d5ff9a88;background:#07110e88;border-radius:50%;position:relative;touch-action:none;backdrop-filter:blur(4px)}
+#knob{position:absolute;width:42px;height:42px;border-radius:50%;background:#c8ff72aa;border:1px solid #eaffc9;left:34px;top:34px}
+.actions{pointer-events:auto;display:flex;gap:10px;align-items:end}
+.action{border:1px solid var(--line);background:var(--panel);color:#f4f7ee;border-radius:50%;width:64px;height:64px;font-weight:800;font-size:11px;letter-spacing:.05em;touch-action:none}
+.action.primary{background:#c8ff72;color:#12200b;border-color:#eaffc9}
+#hint{position:absolute;bottom:calc(env(safe-area-inset-bottom) + 135px);left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11px;color:#e4f0d6;background:#07110ebd;border:1px solid #ffffff20;padding:7px 10px;border-radius:99px}
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,rgba(3,10,8,.42),rgba(3,10,8,.92));z-index:5}
+.card{width:min(440px,100%);border:1px solid var(--line);background:rgba(8,18,14,.92);border-radius:22px;padding:24px;box-shadow:0 20px 80px #0008}
+.eyebrow{font-size:10px;letter-spacing:.22em;color:var(--lime);font-weight:800}
+h1{font-size:36px;line-height:1;margin:9px 0 12px;letter-spacing:-.05em}
+p{font-size:14px;color:#c8d4c6;line-height:1.55}
+.features{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}
+.features span{font-size:11px;border:1px solid #ffffff24;border-radius:99px;padding:7px 9px;color:#e4f0d6}
+#start{width:100%;border:0;border-radius:12px;background:var(--lime);color:#13200c;font-size:14px;font-weight:900;letter-spacing:.08em;padding:15px}
+.small{font-size:11px!important;color:#829184!important}
+#toast{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);font-weight:900;font-size:14px;color:var(--lime);text-shadow:0 2px 10px #000;opacity:0;transition:opacity .2s}
+@media(min-width:700px){#stick{width:125px;height:125px}#knob{left:40px;top:40px}#bottom{padding:0 30px}}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<div id="overlay">
+ <div class="card">
+  <div class="eyebrow">FIELD TEST 001 · PLAYABLE PROTOTYPE</div>
+  <h1>WILDLINE:<br>FIRST CONTACT</h1>
+  <p>You woke up at the edge of a restricted woodland. Unknown signals are moving between the trees. Explore the area and tag the training drones.</p>
+  <div class="features"><span>FIRST-PERSON 3D</span><span>TOUCH CONTROLS</span><span>NO ACCOUNT NEEDED</span></div>
+  <button id="start">DEPLOY INTO THE FIELD</button>
+  <p class="small">Prototype build 0.1 · Internet connection required to load the 3D engine.</p>
+ </div>
+</div>
+<div id="hud">
+ <div class="top">
+  <div class="pill">WILDLINE <b> / 001</b></div>
+  <div class="pill">DRONES <b id="score">0 / 5</b></div>
+ </div>
+ <div id="mission"><strong>ACTIVE OBJECTIVE</strong>Tag 5 training drones. Explore the clearing.</div>
+ <div id="crosshair"></div>
+ <div id="toast">TARGET TAGGED</div>
+ <div id="hint">LEFT THUMB: MOVE · DRAG RIGHT SIDE: LOOK</div>
+ <div id="bottom">
+  <div id="stick"><div id="knob"></div></div>
+  <div class="actions">
+   <button class="action" id="jump">JUMP</button>
+   <button class="action primary" id="fire">TAG<br>TARGET</button>
+  </div>
+ </div>
+</div>
+<script type="module">
+import * as THREE from 'three';
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x91b7b3);
+scene.fog = new THREE.Fog(0x91b7b3, 24, 100);
+const camera = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, .1, 180);
+camera.rotation.order = 'YXZ';
+const renderer = new THREE.WebGLRenderer({antialias:false, powerPreference:'low-power'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));
+renderer.setSize(innerWidth,innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+document.body.prepend(renderer.domElement);
+const hemi = new THREE.HemisphereLight(0xd9f2ff,0x35422c,2.1);scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffe7c0,2.3);sun.position.set(-20,35,15);scene.add(sun);
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
+const groundMat=mat(0x3c6241), trunkMat=mat(0x493b2c), leafMats=[mat(0x254c36),mat(0x315d3b),mat(0x3c6a43)];
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(220,220),groundMat);ground.rotation.x=-Math.PI/2;ground.position.y=-.08;scene.add(ground);
+const grid=new THREE.GridHelper(200,50,0x73956a,0x73956a);grid.position.y=-.06;grid.material.transparent=true;grid.material.opacity=.12;scene.add(grid);
+// Low-poly trees around a navigable clearing.
+let seed=8231;function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+for(let i=0;i<150;i++){
+ let x=(rand()-.5)*150,z=(rand()-.5)*150;
+ if(Math.hypot(x,z)<11)continue;
+ const h=2.3+rand()*3.4;
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.18,.32,h,5),trunkMat);trunk.position.set(x,h/2,z);scene.add(trunk);
+ const crown=new THREE.Mesh(new THREE.ConeGeometry(1.1+rand()*.8,2.4+rand()*2.1,5),leafMats[Math.floor(rand()*leafMats.length)]);
+ crown.position.set(x,h+1,z);crown.rotation.y=rand()*6.28;scene.add(crown);
+}
+// Rocks, ferns and trail markers.
+for(let i=0;i<45;i++){let x=(rand()-.5)*65,z=(rand()-.5)*65;if(Math.hypot(x,z)<7)continue;let r=.25+rand()*.65;let rock=new THREE.Mesh(new THREE.DodecahedronGeometry(r,0),mat(0x596358));rock.position.set(x,r*.55,z);rock.rotation.set(rand(),rand(),rand());scene.add(rock)}
+const pathMat=mat(0x7b7859);
+for(let i=0;i<18;i++){const m=new THREE.Mesh(new THREE.BoxGeometry(1.1,.025,2.1),pathMat);m.position.set(Math.sin(i*.14)*1.4,-.045,-i*2.5-2);m.rotation.y=Math.sin(i*.2)*.08;scene.add(m)}
+// Training drones: glowing red-orange markers with visible rings.
+const drones=[];
+for(let i=0;i<5;i++){
+ const g=new THREE.Group();g.position.set((i%2?1:-1)*(5+rand()*8),1.2,-12-i*8-rand()*5);
+ const body=new THREE.Mesh(new THREE.IcosahedronGeometry(.48,0),mat(0xd56a3d));g.add(body);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.78,.055,6,18),new THREE.MeshBasicMaterial({color:0xc8ff72}));ring.rotation.x=Math.PI/2;g.add(ring);
+ const light=new THREE.PointLight(0xff6633,1.3,5);g.add(light);
+ g.userData.tagged=false;scene.add(g);drones.push(g);
+}
+camera.position.set(0,1.7,5);
+let yaw=0,pitch=0,velY=0,onGround=true,started=false,tagged=0;
+const move={x:0,y:0};let lastTouch=null,lookId=null;
+const stick=document.querySelector('#stick'),knob=document.querySelector('#knob');
+function stickSet(e){const r=stick.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;let dx=e.clientX-cx,dy=e.clientY-cy;const max=35,l=Math.hypot(dx,dy);if(l>max){dx=dx/l*max;dy=dy/l*max}move.x=dx/max;move.y=dy/max;knob.style.transform=`translate(${dx}px,${dy}px)`}
+stick.addEventListener('pointerdown',e=>{stick.setPointerCapture(e.pointerId);stickSet(e)});
+stick.addEventListener('pointermove',e=>{if(e.buttons||e.pressure>0)stickSet(e)});
+function resetStick(){move.x=move.y=0;knob.style.transform='translate(0,0)'}
+stick.addEventListener('pointerup',resetStick);stick.addEventListener('pointercancel',resetStick);
+renderer.domElement.addEventListener('pointerdown',e=>{if(!started)return;lastTouch={x:e.clientX,y:e.clientY,id:e.pointerId};renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointermove',e=>{if(!lastTouch||lastTouch.id!==e.pointerId)return;const dx=e.clientX-lastTouch.x,dy=e.clientY-lastTouch.y;yaw-=dx*.0042;pitch-=dy*.0035;pitch=Math.max(-1.35,Math.min(1.35,pitch));lastTouch={x:e.clientX,y:e.clientY,id:e.pointerId}});
+function stopLook(e){if(lastTouch&&lastTouch.id===e.pointerId)lastTouch=null}
+renderer.domElement.addEventListener('pointerup',stopLook);renderer.domElement.addEventListener('pointercancel',stopLook);
+document.querySelector('#jump').addEventListener('pointerdown',e=>{e.preventDefault();if(onGround){velY=5.8;onGround=false}});
+const scoreEl=document.querySelector('#score'),toast=document.querySelector('#toast');let toastTimer;
+function showToast(t){toast.textContent=t;toast.style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.style.opacity=0,1200)}
+document.querySelector('#fire').addEventListener('pointerdown',e=>{e.preventDefault();if(!started)return;const dir=new THREE.Vector3(0,0,-1).applyEuler(camera.rotation);let best=null,bestDot=.965;for(const d of drones){if(d.userData.tagged)continue;const to=d.position.clone().sub(camera.position),dist=to.length();const dot=dir.dot(to.normalize());if(dot>bestDot&&dist<24){best=d;bestDot=dot}}if(best){best.userData.tagged=true;best.visible=false;tagged++;scoreEl.textContent=`${tagged} / 5`;showToast('TARGET TAGGED +100');if(tagged===5){document.querySelector('#mission').innerHTML='<strong>OBJECTIVE COMPLETE</strong>All training drones tagged. Field test complete — more missions coming soon.';showToast('FIELD TEST COMPLETE!')} }else showToast('NO TARGET IN SIGHTS')});
+document.querySelector('#start').addEventListener('click',()=>{started=true;document.querySelector('#overlay').style.display='none';showToast('FIELD TEST STARTED')});
+const clock=new THREE.Clock();
+function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.04);
+ if(started){
+  camera.rotation.set(pitch,yaw,0,'YXZ');
+  const forward=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+  const speed=5.2;camera.position.addScaledVector(forward,-move.y*speed*dt);camera.position.addScaledVector(right,move.x*speed*dt);
+  camera.position.x=THREE.MathUtils.clamp(camera.position.x,-65,65);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-65,25);
+  velY-=13*dt;camera.position.y+=velY*dt;if(camera.position.y<1.7){camera.position.y=1.7;velY=0;onGround=true}
+  for(const d of drones){if(d.visible){d.rotation.y+=dt*.65;d.position.y=1.2+Math.sin(clock.elapsedTime*2+d.position.z)*.18}}
+ }
+ renderer.render(scene,camera)}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5))});
+</script>
+</body>
+</html>
